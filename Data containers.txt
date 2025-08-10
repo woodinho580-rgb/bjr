@@ -1,0 +1,247 @@
+// Data containers
+let tyres = JSON.parse(localStorage.getItem('tyres')) || [];
+let scraps = JSON.parse(localStorage.getItem('scraps')) || [];
+let breakdowns = JSON.parse(localStorage.getItem('breakdowns')) || [];
+let surveys = JSON.parse(localStorage.getItem('surveys')) || [];
+
+// Navigation
+const sections = document.querySelectorAll('.section');
+document.querySelectorAll('nav button[data-section]').forEach(btn=>{
+  btn.onclick = ()=> {
+    sections.forEach(s=>s.classList.remove('active'));
+    document.getElementById(btn.dataset.section).classList.add('active');
+  }
+});
+
+// Utility to save all data
+function saveData() {
+  localStorage.setItem('tyres', JSON.stringify(tyres));
+  localStorage.setItem('scraps', JSON.stringify(scraps));
+  localStorage.setItem('breakdowns', JSON.stringify(breakdowns));
+  localStorage.setItem('surveys', JSON.stringify(surveys));
+}
+
+// Render tables
+function renderTable(id, data, columns, actions = []) {
+  const tbody = document.querySelector(`#${id} tbody`);
+  tbody.innerHTML = '';
+  data.forEach((item, idx) => {
+    const tr = document.createElement('tr');
+    columns.forEach(col => {
+      const td = document.createElement('td');
+      td.textContent = item[col] || '';
+      tr.appendChild(td);
+    });
+    const actionTd = document.createElement('td');
+    actions.forEach(action => {
+      const btn = document.createElement('button');
+      btn.textContent = action.name;
+      btn.className = action.className;
+      btn.onclick = () => action.fn(idx);
+      actionTd.appendChild(btn);
+    });
+    tr.appendChild(actionTd);
+    tbody.appendChild(tr);
+  });
+}
+
+// Add tyre
+document.getElementById('addTyreForm').onsubmit = e => {
+  e.preventDefault();
+  const id = document.getElementById('addTyreId').value.trim();
+  const brand = document.getElementById('addTyreBrand').value.trim();
+  const type = document.getElementById('addTyreType').value.trim();
+  const installDate = document.getElementById('addInstallDate').value;
+  if(!id || !brand || !type || !installDate) return alert('Fill all fields');
+  if(tyres.find(t=>t.id===id)) return alert('Tyre ID already exists');
+  tyres.push({id, brand, type, installDate});
+  saveData();
+  renderTyres();
+  e.target.reset();
+};
+function renderTyres() {
+  renderTable('addTyreTable', tyres, ['id','brand','type','installDate'], [
+    {name:'Delete', className:'del-btn', fn: i=> {
+      tyres.splice(i,1);
+      saveData();
+      renderTyres();
+    }}
+  ]);
+}
+
+// Scrap tyre
+document.getElementById('scrapTyreForm').onsubmit = e => {
+  e.preventDefault();
+  const id = document.getElementById('scrapTyreId').value.trim();
+  const date = document.getElementById('scrapDate').value;
+  const reason = document.getElementById('scrapReason').value.trim();
+  if(!id || !date || !reason) return alert('Fill all fields');
+  scraps.push({id, date, reason});
+  saveData();
+  renderScraps();
+  e.target.reset();
+};
+function renderScraps() {
+  renderTable('scrapTyreTable', scraps, ['id','date','reason'], [
+    {name:'Delete', className:'del-btn', fn:i=>{
+      scraps.splice(i,1);
+      saveData();
+      renderScraps();
+    }}
+  ]);
+}
+
+// Breakdown
+document.getElementById('breakdownForm').onsubmit = e => {
+  e.preventDefault();
+  const id = document.getElementById('breakdownTyreId').value.trim();
+  const date = document.getElementById('breakdownDate').value;
+  const details = document.getElementById('breakdownDetails').value.trim();
+  if(!id || !date || !details) return alert('Fill all fields');
+  breakdowns.push({id, date, details});
+  saveData();
+  renderBreakdowns();
+  e.target.reset();
+};
+function renderBreakdowns() {
+  renderTable('breakdownTable', breakdowns, ['id','date','details'], [
+    {name:'Delete', className:'del-btn', fn:i=>{
+      breakdowns.splice(i,1);
+      saveData();
+      renderBreakdowns();
+    }}
+  ]);
+}
+
+// Survey
+document.getElementById('surveyForm').onsubmit = e => {
+  e.preventDefault();
+  const id = document.getElementById('surveyTyreId').value.trim();
+  const tread = parseFloat(document.getElementById('surveyTreadDepth').value);
+  const pressure = parseFloat(document.getElementById('surveyPressure').value);
+  const comments = document.getElementById('surveyComments').value.trim();
+  if(!id || isNaN(tread) || isNaN(pressure)) return alert('Fill all fields correctly');
+  surveys.push({id, tread, pressure, comments});
+  saveData();
+  renderSurveys();
+  e.target.reset();
+};
+function renderSurveys() {
+  renderTable('surveyTable', surveys, ['id','tread','pressure','comments'], [
+    {name:'Delete', className:'del-btn', fn:i=>{
+      surveys.splice(i,1);
+      saveData();
+      renderSurveys();
+    }}
+  ]);
+}
+
+// Dashboard charts
+function renderDashboard() {
+  const ctxTread = document.getElementById('treadChart').getContext('2d');
+  const ctxPressure = document.getElementById('pressureChart').getContext('2d');
+  const ctxBreakdown = document.getElementById('breakdownChart').getContext('2d');
+  const ctxScrap = document.getElementById('scrapChart').getContext('2d');
+
+  // Tyre IDs from surveys
+  const labels = [...new Set(surveys.map(s=>s.id))];
+
+  // Tread depths
+  const treadData = labels.map(id=>{
+    const entry = surveys.filter(s=>s.id===id);
+    if(entry.length===0) return 0;
+    return entry.reduce((a,v)=>a+v.tread,0)/entry.length;
+  });
+
+  // Pressure averages
+  const pressureData = labels.map(id=>{
+    const entry = surveys.filter(s=>s.id===id);
+    if(entry.length===0) return 0;
+    return entry.reduce((a,v)=>a+v.pressure,0)/entry.length;
+  });
+
+  // Breakdown count per tyre
+  const breakdownCount = labels.map(id=>breakdowns.filter(b=>b.id===id).length);
+
+  // Scrap count per tyre
+  const scrapCount = labels.map(id=>scraps.filter(s=>s.id===id).length);
+
+  // Destroy old charts if exist
+  if(window.treadChart) window.treadChart.destroy();
+  if(window.pressureChart) window.pressureChart.destroy();
+  if(window.breakdownChart) window.breakdownChart.destroy();
+  if(window.scrapChart) window.scrapChart.destroy();
+
+  window.treadChart = new Chart(ctxTread, {
+    type: 'bar',
+    data: {
+      labels, datasets: [{label:'Avg Tread Depth (mm)', data:treadData, backgroundColor:'#c0c0c0'}]
+    },
+    options: {scales:{y:{beginAtZero:true, max:15}}}
+  });
+
+  window.pressureChart = new Chart(ctxPressure, {
+    type: 'line',
+    data: {
+      labels, datasets: [{label:'Avg Pressure (psi)', data:pressureData, borderColor:'#c0c0c0', backgroundColor:'rgba(192,192,192,0.3)', fill:true, tension:0.3}]
+    },
+    options: {scales:{y:{beginAtZero:true, max:50}}}
+  });
+
+  window.breakdownChart = new Chart(ctxBreakdown, {
+    type: 'bar',
+    data: {labels, datasets:[{label:'Breakdowns', data:breakdownCount, backgroundColor:'#f44336'}]},
+    options: {scales:{y:{beginAtZero:true}}}
+  });
+
+  window.scrapChart = new Chart(ctxScrap, {
+    type: 'bar',
+    data: {labels, datasets:[{label:'Scrapped', data:scrapCount, backgroundColor:'#9e9e9e'}]},
+    options: {scales:{y:{beginAtZero:true}}}
+  });
+}
+
+// PDF Export
+document.getElementById('exportPdfBtn').onclick = () => {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(20);
+  doc.text('Milestone Tyres Report', 10, 15);
+  doc.setFontSize(12);
+
+  // Tyres
+  doc.text('Tyres:', 10, 25);
+  tyres.forEach((t,i) => {
+    doc.text(`${i+1}. ID: ${t.id}, Brand: ${t.brand}, Type: ${t.type}, Installed: ${t.installDate}`, 10, 35 + i*10);
+  });
+
+  // Scraps
+  let y = 40 + tyres.length*10;
+  doc.text('Scrapped Tyres:', 10, y);
+  scraps.forEach((s,i) => {
+    doc.text(`${i+1}. ID: ${s.id}, Date: ${s.date}, Reason: ${s.reason}`, 10, y+10 + i*10);
+  });
+
+  // Breakdowns
+  y += 20 + scraps.length*10;
+  doc.text('Breakdowns:', 10, y);
+  breakdowns.forEach((b,i) => {
+    doc.text(`${i+1}. ID: ${b.id}, Date: ${b.date}, Details: ${b.details}`, 10, y+10 + i*10);
+  });
+
+  // Surveys
+  y += 20 + breakdowns.length*10;
+  doc.text('Surveys:', 10, y);
+  surveys.forEach((s,i) => {
+    doc.text(`${i+1}. ID: ${s.id}, Tread: ${s.tread} mm, Pressure: ${s.pressure} psi, Comments: ${s.comments}`, 10, y+10 + i*10);
+  });
+
+  doc.save('milestone_tyres_report.pdf');
+};
+
+// Initial renders
+renderTyres();
+renderScraps();
+renderBreakdowns();
+renderSurveys();
+renderDashboard();
