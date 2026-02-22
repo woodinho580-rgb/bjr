@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tyre Tracking Management System</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --line: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --ok: #16a34a;
+      --warn: #f59e0b;
+      --danger: #dc2626;
+      --btn: #2563eb;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      padding: 1rem 1.2rem;
+      border-bottom: 1px solid var(--line);
+      background: #020617;
+    }
+
+    header h1 { margin: 0 0 .3rem; }
+    header p { margin: 0; color: var(--muted); }
+
+    main {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 1rem;
+      padding: 1rem;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 1rem;
+    }
+
+    .panel h2 { margin-top: 0; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: .6rem;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: .3rem;
+      font-size: .9rem;
+    }
+
+    input, select, button, .import-label {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: .5rem;
+      background: #0b1222;
+      color: var(--text);
+    }
+
+    button, .import-label {
+      margin-top: .7rem;
+      background: var(--btn);
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      text-decoration: none;
+    }
+
+    button:hover, .import-label:hover { opacity: .9; }
+
+    .toolbar {
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+      align-items: end;
+    }
+
+    #importInput { display: none; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: .7rem;
+      font-size: .9rem;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: .45rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #0b1222; }
+    .status-active { color: var(--ok); font-weight: bold; }
+    .status-monitor { color: var(--warn); font-weight: bold; }
+    .status-scrapped { color: var(--danger); font-weight: bold; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: .5rem;
+    }
+
+    .stat {
+      background: #0b1222;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: .6rem;
+    }
+
+    .stat strong { display: block; font-size: 1.2rem; }
+    .full-width { grid-column: 1 / -1; }
+
+    @media (max-width: 900px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Tyre Tracking Management System</h1>
+    <p>Single-file edition: open this HTML directly in your browser and start using it.</p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Add Tyre</h2>
+      <form id="tyreForm">
+        <div class="grid">
+          <label>Tyre ID <input id="tyreId" required /></label>
+          <label>Vehicle <input id="vehicleId" required /></label>
+          <label>Position
+            <select id="position" required>
+              <option value="">Select</option>
+              <option>FL</option><option>FR</option><option>RL</option><option>RR</option><option>Spare</option>
+            </select>
+          </label>
+          <label>Brand <input id="brand" required /></label>
+          <label>Model <input id="model" required /></label>
+          <label>Installed Date <input id="installedDate" type="date" required /></label>
+          <label>Current Odometer (km) <input id="odometer" type="number" min="0" required /></label>
+        </div>
+        <button type="submit">Save Tyre</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Log Survey</h2>
+      <form id="surveyForm">
+        <div class="grid">
+          <label>Tyre ID <input id="surveyTyreId" required /></label>
+          <label>Date <input id="surveyDate" type="date" required /></label>
+          <label>Tread Depth (mm) <input id="treadDepth" type="number" min="0" max="40" step="0.1" required /></label>
+          <label>Pressure (psi) <input id="pressure" type="number" min="0" max="200" step="0.1" required /></label>
+          <label>Odometer (km) <input id="surveyOdometer" type="number" min="0" required /></label>
+          <label>Comments <input id="surveyNotes" /></label>
+        </div>
+        <button type="submit">Save Survey</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Log Breakdown</h2>
+      <form id="breakdownForm">
+        <div class="grid">
+          <label>Tyre ID <input id="breakdownTyreId" required /></label>
+          <label>Date <input id="breakdownDate" type="date" required /></label>
+          <label>Details <input id="breakdownDetails" required /></label>
+        </div>
+        <button type="submit">Save Breakdown</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Scrap Tyre</h2>
+      <form id="scrapForm">
+        <div class="grid">
+          <label>Tyre ID <input id="scrapTyreId" required /></label>
+          <label>Date <input id="scrapDate" type="date" required /></label>
+          <label>Reason <input id="scrapReason" required /></label>
+        </div>
+        <button type="submit">Mark as Scrapped</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Dashboard</h2>
+      <div id="stats" class="stats"></div>
+      <div class="toolbar">
+        <label>Search Tyre <input id="searchInput" placeholder="Enter tyre ID or vehicle" /></label>
+        <button id="exportBtn" type="button">Export JSON</button>
+        <label class="import-label" for="importInput">Import JSON</label>
+        <input id="importInput" type="file" accept="application/json" />
+      </div>
+      <table id="tyresTable">
+        <thead>
+          <tr>
+            <th>Tyre ID</th><th>Vehicle</th><th>Position</th><th>Status</th><th>Brand/Model</th>
+            <th>Installed</th><th>Latest Tread</th><th>Latest PSI</th><th>Distance (km)</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Tyre Event History</h2>
+      <table id="historyTable">
+        <thead>
+          <tr><th>Date</th><th>Tyre ID</th><th>Event</th><th>Details</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    const DB_KEY = 'tyre_tracking_single_file_v1';
+    const byId = (id) => document.getElementById(id);
+
+    const els = {
+      tyreForm: byId('tyreForm'), surveyForm: byId('surveyForm'), breakdownForm: byId('breakdownForm'), scrapForm: byId('scrapForm'),
+      searchInput: byId('searchInput'), tyresTableBody: document.querySelector('#tyresTable tbody'), historyTableBody: document.querySelector('#historyTable tbody'),
+      stats: byId('stats'), exportBtn: byId('exportBtn'), importInput: byId('importInput')
+    };
+
+    let state = load();
+
+    function emptyState() { return { tyres: [], surveys: [], breakdowns: [], scraps: [] }; }
+
+    function load() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(DB_KEY) || '{}');
+        return {
+          tyres: Array.isArray(parsed.tyres) ? parsed.tyres : [],
+          surveys: Array.isArray(parsed.surveys) ? parsed.surveys : [],
+          breakdowns: Array.isArray(parsed.breakdowns) ? parsed.breakdowns : [],
+          scraps: Array.isArray(parsed.scraps) ? parsed.scraps : []
+        };
+      } catch {
+        return emptyState();
+      }
+    }
+
+    function save() { localStorage.setItem(DB_KEY, JSON.stringify(state)); }
+
+    function requireText(value, fieldName) {
+      if (!value || !value.trim()) throw new Error(`${fieldName} is required.`);
+      return value.trim();
+    }
+
+    function requireNumber(value, fieldName, min = 0) {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n < min) throw new Error(`${fieldName} must be a number >= ${min}.`);
+      return n;
+    }
+
+    const isKnownTyre = (id) => state.tyres.some((t) => t.tyreId === id);
+    const isScrapped = (id) => state.scraps.some((s) => s.tyreId === id);
+    const getTyre = (id) => state.tyres.find((t) => t.tyreId === id);
+
+    function getLatestSurvey(tyreId) {
+      return state.surveys.filter((s) => s.tyreId === tyreId).sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+    }
+
+    function getLatestOdometer(tyreId) {
+      const tyre = getTyre(tyreId);
+      if (!tyre) return null;
+      const latest = getLatestSurvey(tyreId);
+      return latest ? latest.odometer : tyre.odometer;
+    }
+
+    function getDistanceRun(tyreId) {
+      const tyre = getTyre(tyreId);
+      if (!tyre) return '-';
+      return Math.max(0, getLatestOdometer(tyreId) - tyre.odometer);
+    }
+
+    function getStatus(tyreId) {
+      if (isScrapped(tyreId)) return { label: 'Scrapped', className: 'status-scrapped' };
+      const breakdownCount = state.breakdowns.filter((b) => b.tyreId === tyreId).length;
+      const latest = getLatestSurvey(tyreId);
+      if (breakdownCount >= 2 || (latest && latest.treadDepth < 3)) return { label: 'Monitor', className: 'status-monitor' };
+      return { label: 'Active', className: 'status-active' };
+    }
+
+    function eventHistory() {
+      const events = [
+        ...state.tyres.map((t) => ({ date: t.installedDate, tyreId: t.tyreId, event: 'Installed', details: `${t.vehicleId} ${t.position}` })),
+        ...state.surveys.map((s) => ({ date: s.date, tyreId: s.tyreId, event: 'Survey', details: `Tread ${s.treadDepth}mm, PSI ${s.pressure}, ODO ${s.odometer}` })),
+        ...state.breakdowns.map((b) => ({ date: b.date, tyreId: b.tyreId, event: 'Breakdown', details: b.details })),
+        ...state.scraps.map((s) => ({ date: s.date, tyreId: s.tyreId, event: 'Scrapped', details: s.reason }))
+      ];
+      return events.sort((a, b) => new Date(b.date) - new Date(a.date));
+    }
+
+    function renderStats() {
+      const active = state.tyres.filter((t) => getStatus(t.tyreId).label === 'Active').length;
+      const monitor = state.tyres.filter((t) => getStatus(t.tyreId).label === 'Monitor').length;
+      const scrapped = state.tyres.filter((t) => getStatus(t.tyreId).label === 'Scrapped').length;
+      els.stats.innerHTML = `
+        <div class="stat"><span>Total Tyres</span><strong>${state.tyres.length}</strong></div>
+        <div class="stat"><span>Active</span><strong>${active}</strong></div>
+        <div class="stat"><span>Monitor</span><strong>${monitor}</strong></div>
+        <div class="stat"><span>Scrapped</span><strong>${scrapped}</strong></div>
+        <div class="stat full-width"><span>Breakdowns Logged</span><strong>${state.breakdowns.length}</strong></div>
+      `;
+    }
+
+    function renderTyres() {
+      const q = els.searchInput.value.trim().toLowerCase();
+      els.tyresTableBody.innerHTML = '';
+
+      state.tyres
+        .filter((t) => !q || t.tyreId.toLowerCase().includes(q) || t.vehicleId.toLowerCase().includes(q))
+        .forEach((t) => {
+          const latest = getLatestSurvey(t.tyreId);
+          const status = getStatus(t.tyreId);
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${t.tyreId}</td>
+            <td>${t.vehicleId}</td>
+            <td>${t.position}</td>
+            <td class="${status.className}">${status.label}</td>
+            <td>${t.brand} ${t.model}</td>
+            <td>${t.installedDate}</td>
+            <td>${latest ? latest.treadDepth : '-'}</td>
+            <td>${latest ? latest.pressure : '-'}</td>
+            <td>${getDistanceRun(t.tyreId)}</td>
+            <td><button data-id="${t.tyreId}" class="delete">Delete</button></td>
+          `;
+          els.tyresTableBody.appendChild(tr);
+        });
+
+      document.querySelectorAll('button.delete').forEach((btn) => {
+        btn.onclick = () => {
+          const id = btn.dataset.id;
+          state.tyres = state.tyres.filter((t) => t.tyreId !== id);
+          state.surveys = state.surveys.filter((s) => s.tyreId !== id);
+          state.breakdowns = state.breakdowns.filter((b) => b.tyreId !== id);
+          state.scraps = state.scraps.filter((s) => s.tyreId !== id);
+          save();
+          renderAll();
+        };
+      });
+    }
+
+    function renderHistory() {
+      els.historyTableBody.innerHTML = '';
+      eventHistory().forEach((e) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${e.date}</td><td>${e.tyreId}</td><td>${e.event}</td><td>${e.details}</td>`;
+        els.historyTableBody.appendChild(tr);
+      });
+    }
+
+    function renderAll() {
+      renderStats();
+      renderTyres();
+      renderHistory();
+    }
+
+    els.tyreForm.onsubmit = (e) => {
+      e.preventDefault();
+      try {
+        const tyre = {
+          tyreId: requireText(byId('tyreId').value, 'Tyre ID'),
+          vehicleId: requireText(byId('vehicleId').value, 'Vehicle'),
+          position: requireText(byId('position').value, 'Position'),
+          brand: requireText(byId('brand').value, 'Brand'),
+          model: requireText(byId('model').value, 'Model'),
+          installedDate: requireText(byId('installedDate').value, 'Installed date'),
+          odometer: requireNumber(byId('odometer').value, 'Odometer')
+        };
+
+        if (isKnownTyre(tyre.tyreId)) throw new Error('Tyre ID already exists.');
+
+        state.tyres.push(tyre);
+        save();
+        els.tyreForm.reset();
+        renderAll();
+      } catch (err) {
+        alert(err.message);
+      }
+    };
+
+    els.surveyForm.onsubmit = (e) => {
+      e.preventDefault();
+      try {
+        const tyreId = requireText(byId('surveyTyreId').value, 'Tyre ID');
+        if (!isKnownTyre(tyreId)) throw new Error('Tyre ID not found. Add tyre first.');
+        if (isScrapped(tyreId)) throw new Error('Cannot add survey to scrapped tyre.');
+
+        const odometer = requireNumber(byId('surveyOdometer').value, 'Survey odometer');
+        if (odometer < getLatestOdometer(tyreId)) throw new Error('Survey odometer cannot go backwards.');
+
+        state.surveys.push({
+          tyreId,
+          date: requireText(byId('surveyDate').value, 'Survey date'),
+          treadDepth: requireNumber(byId('treadDepth').value, 'Tread depth'),
+          pressure: requireNumber(byId('pressure').value, 'Pressure'),
+          odometer,
+          notes: byId('surveyNotes').value.trim()
+        });
+
+        save();
+        els.surveyForm.reset();
+        renderAll();
+      } catch (err) {
+        alert(err.message);
+      }
+    };
+
+    els.breakdownForm.onsubmit = (e) => {
+      e.preventDefault();
+      try {
+        const tyreId = requireText(byId('breakdownTyreId').value, 'Tyre ID');
+        if (!isKnownTyre(tyreId)) throw new Error('Tyre ID not found.');
+        if (isScrapped(tyreId)) throw new Error('Cannot log breakdown for scrapped tyre.');
+
+        state.breakdowns.push({
+          tyreId,
+          date: requireText(byId('breakdownDate').value, 'Breakdown date'),
+          details: requireText(byId('breakdownDetails').value, 'Breakdown details')
+        });
+
+        save();
+        els.breakdownForm.reset();
+        renderAll();
+      } catch (err) {
+        alert(err.message);
+      }
+    };
+
+    els.scrapForm.onsubmit = (e) => {
+      e.preventDefault();
+      try {
+        const tyreId = requireText(byId('scrapTyreId').value, 'Tyre ID');
+        if (!isKnownTyre(tyreId)) throw new Error('Tyre ID not found.');
+        if (isScrapped(tyreId)) throw new Error('Tyre is already scrapped.');
+
+        state.scraps.push({
+          tyreId,
+          date: requireText(byId('scrapDate').value, 'Scrap date'),
+          reason: requireText(byId('scrapReason').value, 'Scrap reason')
+        });
+
+        save();
+        els.scrapForm.reset();
+        renderAll();
+      } catch (err) {
+        alert(err.message);
+      }
+    };
+
+    els.exportBtn.onclick = () => {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'tyre-tracking-export.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    els.importInput.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        state = {
+          tyres: Array.isArray(parsed.tyres) ? parsed.tyres : [],
+          surveys: Array.isArray(parsed.surveys) ? parsed.surveys : [],
+          breakdowns: Array.isArray(parsed.breakdowns) ? parsed.breakdowns : [],
+          scraps: Array.isArray(parsed.scraps) ? parsed.scraps : []
+        };
+        save();
+        renderAll();
+        alert('Import successful.');
+      } catch {
+        alert('Import failed: invalid JSON format.');
+      }
+    };
+
+    els.searchInput.oninput = renderTyres;
+    renderAll();
+  </script>
+</body>
+</html>
